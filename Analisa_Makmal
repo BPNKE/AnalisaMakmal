@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Analisis Makmal Report Generator</title>
+  <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+  <style>
+    :root {
+      --primary-blue: #0070C0;
+      --fase-green: #4CAF50;
+      /* Dynamic Font Variables */
+      --main-font: Arial, sans-serif;
+      --base-size: 11pt;
+    }
+    body { display: flex; font-family: var(--main-font); margin: 0; background: #f0f2f5; }
+    
+    /* UI Sidebar */
+    #formContainer { flex: 1; padding: 25px; background: #fff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); height: 100vh; overflow-y: auto; position: sticky; top: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+    #previewContainer { flex: 1.5; padding: 40px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; height: 100vh; box-sizing: border-box; }
+    
+    h2 { color: var(--primary-blue); border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px; margin-top: 0; }
+    .control-group { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
+    .control-label { font-size: 0.8rem; font-weight: bold; color: #555; margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    
+    label { font-weight: bold; display: block; margin-top: 15px; font-size: 0.9rem; }
+    .control-group label { margin-top: 0; font-size: 0.85rem; }
+    input, textarea, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+    
+    .button-group { display: flex; gap: 10px; margin-top: 25px; margin-bottom: 20px; }
+    .print-btn, .ppt-btn { flex: 1; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+    .print-btn:hover, .ppt-btn:hover { opacity: 0.9; }
+    .print-btn { background: var(--primary-blue); }
+    .ppt-btn { background: #d04423; }
+
+    /* --- REBUILT A4 PAGE ENGINE --- */
+    .a4page { 
+        width: 210mm; 
+        height: 297mm; 
+        background: white; 
+        padding: 20mm; 
+        margin-bottom: 30px; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
+        box-sizing: border-box; 
+        position: relative; 
+        page-break-after: always;
+        overflow: hidden; 
+    }
+
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+    /* Headers scale slightly relative to the base size */
+    .header .left div { font-size: calc(var(--base-size) + 1pt); }
+    .fase { background: var(--fase-green); color: white; font-size: 9pt; font-weight: bold; padding: 4px 10px; border-radius: 4px; font-family: Arial, sans-serif; }
+    
+    .table { border-collapse: collapse; width: 100%; margin-bottom: 15px; table-layout: fixed; }
+    .table th, .table td { border: 1px solid #000; padding: 8px; font-size: var(--base-size); }
+    
+    .align-left { text-align: left !important; }
+    .align-center { text-align: center !important; }
+    .align-right { text-align: right !important; }
+
+    /* --- INFO TABLE COLUMN WIDTHS --- */
+    .info-table th { background-color: var(--primary-blue); color: white; }
+    .info-table th:nth-child(1) { width: 18%; } 
+    .info-table td:nth-child(2) { width: 10%; } 
+    .info-table th:nth-child(3) { width: 20%; } 
+    .info-table td:nth-child(4) { width: 52%; } 
+    
+    .ulasan-wrapper { display: block; width: 100%; }
+    .ulasan-heading { font-weight: bold; text-decoration: underline; margin-top: 10px; margin-bottom: 10px; font-size: var(--base-size); }
+    
+    .ulasan-list { padding-left: 25px; margin: 0; }
+    .ulasan-list li { margin-bottom: 8px; text-align: justify; font-size: var(--base-size); line-height: 1.4; }
+    
+    .footer-line { border: 0; border-top: 1px solid #000; position: absolute; bottom: 35px; left: 20mm; right: 20mm; }
+    .footer { position: absolute; bottom: 15px; right: 20mm; font-size: 14pt; font-weight: bold; font-family: Arial, sans-serif;}
+
+    /* --- PRINT SETTINGS --- */
+    @media print { 
+        @page { size: A4; margin: 0; } 
+        #formContainer { display: none; } 
+        body { 
+            background: none; 
+            display: block; 
+            /* Forces browsers to print background colors and white text! */
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact;
+        }
+        #previewContainer { padding: 0; height: auto; overflow: visible; display: block; }
+        .a4page { margin: 0; box-shadow: none; border: none; page-break-after: always; } 
+    }
+  </style>
+</head>
+<body>
+
+<div id="formContainer">
+  <h2>Report Settings</h2>
+  
+  <div class="control-group">
+    <span class="control-label">TETAPAN HALAMAN (PAGE SETTINGS)</span>
+    <div style="margin-bottom: 15px;">
+      <label>Muka Surat Mula (Start Page):</label>
+      <input type="number" id="start_page" value="1" min="1" oninput="updatePreview()">
+    </div>
+
+    <span class="control-label" style="margin-top: 20px;">TETAPAN TULISAN (FONT SETTINGS)</span>
+    <div style="display: flex; gap: 10px; align-items: flex-end;">
+      <div style="flex:2">
+        <label>Jenis Font:</label>
+        <select id="font_family" onchange="updatePreview()">
+          <option value="Arial, sans-serif" selected>Arial</option>
+          <option value="'Times New Roman', Times, serif">Times New Roman</option>
+          <option value="Calibri, sans-serif">Calibri</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="Tahoma, sans-serif">Tahoma</option>
+        </select>
+      </div>
+      <div style="flex:1; text-align: center;">
+        <label>Saiz:</label>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 5px;">
+          <button type="button" onclick="changeFontSize(-1)" style="padding: 5px 10px; cursor: pointer; font-weight: bold;">-</button>
+          <span id="font_size_display" style="font-weight: bold; font-size: 1.1rem; width: 25px;">11</span>
+          <button type="button" onclick="changeFontSize(1)" style="padding: 5px 10px; cursor: pointer; font-weight: bold;">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form id="reportForm">
+    <label>Kumpulan:</label>
+    <input type="text" name="kumpulan" value="2">
+    
+    <label>CAN WE NO:</label>
+    <input type="text" name="can_we_no" value="1">
+    
+    <label>KETERANGAN:</label>
+    <textarea name="keterangan" rows="2">Rumusan Kerja Arkitek</textarea>
+
+    <label>SKOP SEBELUM MAKMAL:</label>
+    <textarea name="skop_sebelum" rows="3"></textarea>
+
+    <label>SKOP SELEPAS MAKMAL:</label>
+    <textarea name="skop_selepas" rows="3"></textarea>
+
+    <div style="display: flex; gap: 10px;">
+      <div style="flex:1">
+        <label>KOS SEBELUM (RM):</label>
+        <input type="number" step="0.01" name="kos_sebelum" value="100000">
+      </div>
+      <div style="flex:1">
+        <label>KOS SELEPAS (RM):</label>
+        <input type="number" step="0.01" name="kos_selepas" value="40000">
+      </div>
+    </div>
+
+    <label>ULASAN (Tekan 'Enter' untuk setiap poin baru):</label>
+    <textarea name="ulasan" style="height: 200px;" placeholder="Poin pertama...&#10;Poin kedua..."></textarea>
+
+    <div class="button-group">
+      <button type="button" class="print-btn" onclick="window.print()">PRINT PDF</button>
+      <button type="button" class="ppt-btn" onclick="exportToPPT()">EXPORT PPT</button>
+    </div>
+  </form>
+</div>
+
+<div id="previewContainer">
+  <div id="previewContent"></div>
+</div>
+
+<script>
+  const form = document.getElementById("reportForm");
+  window.autoPPTChunks = [];
+  
+  // Global Font Size Tracker
+  let currentFontSize = 11;
+
+  function changeFontSize(step) {
+      currentFontSize += step;
+      if (currentFontSize < 8) currentFontSize = 8;
+      if (currentFontSize > 18) currentFontSize = 18; // Prevent it from getting too absurdly large
+      document.getElementById('font_size_display').innerText = currentFontSize;
+      updatePreview();
+  }
+
+  function formatMoney(num) {
+    if (isNaN(num)) return "0.00";
+    const formatted = new Intl.NumberFormat('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num));
+    return num < 0 ? `(${formatted})` : formatted;
+  }
+
+  function createPageElement(data, pageNum, isFirstPage) {
+    const alignMain = 'align-left';
+    const alignTable = 'align-center';
+    
+    const kosSebelum = parseFloat(data.kos_sebelum) || 0;
+    const kosSelepas = parseFloat(data.kos_selepas) || 0;
+    const beza = kosSelepas - kosSebelum;
+
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'a4page';
+
+    let html = `
+      <div class="header">
+        <div class="left ${alignMain}" style="flex:1">
+          <div><strong>TERHAD</strong></div>
+          <div style="margin-top:5px;"><strong>3.0 ANALISIS MAKMAL (Kumpulan ${data.kumpulan || "____"})</strong></div>
+        </div>
+        <div class="fase">FASA PEMBENTANGAN</div>
+      </div>
+
+      <table class="table info-table">
+        <tr>
+          <th class="${alignTable}" style="color:white;">CAN WE NO :</th>
+          <td style="text-align:center;">${data.can_we_no || ""}</td>
+          <th class="${alignTable}" style="color:white;">KETERANGAN :</th>
+          <td>${data.keterangan || ""}</td>
+        </tr>
+      </table>
+    `;
+
+    if (isFirstPage) {
+      html += `
+        <table class="table">
+          <tr>
+            <th class="${alignTable}">CADANGAN SKOP SEBELUM MAKMAL</th>
+            <th class="${alignTable}">SKOP SELEPAS MAKMAL</th>
+          </tr>
+          <tr>
+            <td style="height:80px; vertical-align: top;">${data.skop_sebelum.replace(/\n/g, '<br>')}</td>
+            <td style="vertical-align: top;">${data.skop_selepas.replace(/\n/g, '<br>')}</td>
+          </tr>
+        </table>
+
+        <table class="table">
+          <tr>
+            <th class="${alignTable}">CADANGAN KOS SEBELUM MAKMAL (RM)</th>
+            <th class="${alignTable}">KOS SELEPAS MAKMAL (RM)</th>
+            <th class="${alignTable}">BEZA (RM)</th>
+          </tr>
+          <tr>
+            <td style="text-align:center">${formatMoney(kosSebelum)}</td>
+            <td style="text-align:center">${formatMoney(kosSelepas)}</td>
+            <td style="text-align:center"><strong>${formatMoney(beza)}</strong></td>
+          </tr>
+        </table>
+      `;
+    }
+
+    html += `
+      <div class="ulasan-wrapper"></div>
+      <hr class="footer-line">
+      <div class="footer">TERHAD ${pageNum}</div>
+    `;
+
+    pageDiv.innerHTML = html;
+    return pageDiv;
+  }
+
+  function updatePreview() {
+    // 1. Apply typography settings globally BEFORE drawing the page
+    const fontSelect = document.getElementById('font_family').value;
+    document.documentElement.style.setProperty('--main-font', fontSelect);
+    document.documentElement.style.setProperty('--base-size', currentFontSize + 'pt');
+
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    const alignMain = 'align-left'; 
+    const startPageNum = parseInt(document.getElementById('start_page').value) || 1;
+    const previewContent = document.getElementById("previewContent");
+    
+    previewContent.innerHTML = ""; 
+    window.autoPPTChunks = [];
+
+    const ulasanItems = data.ulasan.split("\n").filter(line => line.trim() !== "");
+    
+    let pageNum = startPageNum;
+    let currentPage = createPageElement(data, pageNum, true);
+    previewContent.appendChild(currentPage);
+
+    let ulasanWrapper = currentPage.querySelector('.ulasan-wrapper');
+    let ulasanHeading = document.createElement('div');
+    ulasanHeading.className = `ulasan-heading ${alignMain}`;
+    ulasanHeading.textContent = 'ULASAN';
+    ulasanWrapper.appendChild(ulasanHeading);
+    
+    let currentOl = document.createElement('ol');
+    currentOl.className = 'ulasan-list';
+    let currentChunk = [];
+    let currentLetterIndex = 1;
+    currentOl.setAttribute('start', currentLetterIndex);
+    currentOl.setAttribute('type', 'a');
+    ulasanWrapper.appendChild(currentOl);
+
+    if (ulasanItems.length === 0) {
+      currentOl.outerHTML = `<p style="color:#999; font-style:italic; font-size: 0.9rem;">(Sila masukkan ulasan di ruangan sebelah kiri)</p>`;
+      window.autoPPTChunks.push([]);
+      return;
+    }
+
+    const pageHeightPixels = currentPage.offsetHeight; 
+    const maxBottomLimit = pageHeightPixels - 120;
+
+    for (let i = 0; i < ulasanItems.length; i++) {
+      let cleanText = ulasanItems[i].replace(/^[a-zA-Z0-9]+[\.\)]\s+/, '');
+      let li = document.createElement('li');
+      li.textContent = cleanText;
+      currentOl.appendChild(li);
+
+      let bottomOfLi = li.offsetTop + li.offsetHeight;
+
+      // Because font-size changes dynamically via CSS variables, this measurement perfectly catches if larger text causes overflow!
+      if (bottomOfLi > maxBottomLimit) {
+        currentOl.removeChild(li); 
+
+        if (currentChunk.length === 0) {
+            ulasanHeading.style.display = 'none'; 
+            window.autoPPTChunks.push([]); 
+        } else {
+            window.autoPPTChunks.push(currentChunk);
+        }
+        
+        currentChunk = [];
+        pageNum++;
+        
+        currentPage = createPageElement(data, pageNum, false);
+        previewContent.appendChild(currentPage);
+        ulasanWrapper = currentPage.querySelector('.ulasan-wrapper');
+        
+        ulasanHeading = document.createElement('div');
+        ulasanHeading.className = `ulasan-heading ${alignMain}`;
+        ulasanHeading.textContent = 'ULASAN (SAMBUNGAN)';
+        ulasanWrapper.appendChild(ulasanHeading);
+        
+        currentOl = document.createElement('ol');
+        currentOl.className = 'ulasan-list';
+        currentOl.setAttribute('start', currentLetterIndex);
+        currentOl.setAttribute('type', 'a');
+        ulasanWrapper.appendChild(currentOl);
+        
+        currentOl.appendChild(li);
+      }
+      
+      currentChunk.push(cleanText);
+      currentLetterIndex++;
+    }
+    
+    if (currentChunk.length > 0) {
+      window.autoPPTChunks.push(currentChunk);
+    }
+  }
+
+  function exportToPPT() {
+    let pptx = new PptxGenJS();
+    
+    pptx.defineLayout({ name: 'A4_PORTRAIT', width: 8.27, height: 11.69 });
+    pptx.layout = 'A4_PORTRAIT';
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    const alignTable = 'center';
+    const alignMain = 'left';
+    const startPageNum = parseInt(document.getElementById('start_page').value) || 1;
+
+    // --- Font Extraction & Sizing Math for PPT ---
+    const fontRaw = document.getElementById('font_family').value;
+    const fontName = fontRaw.split(',')[0].replace(/['"]/g, '').trim();
+    const sizeDiff = currentFontSize - 11; 
+    
+    // Scale standard sizes
+    const pptTitleSize = 14 + sizeDiff;
+    const pptSubTitleSize = 12 + sizeDiff;
+    const pptTableSize = 10 + sizeDiff;
+    const pptUlasanSize = 11 + sizeDiff;
+
+    const kosSebelum = parseFloat(data.kos_sebelum) || 0;
+    const kosSelepas = parseFloat(data.kos_selepas) || 0;
+    const beza = kosSelepas - kosSebelum;
+
+    const chunks = window.autoPPTChunks && window.autoPPTChunks.length > 0 ? window.autoPPTChunks : [[]];
+    let globalLetterIndex = 1;
+    const wLayout = 7.27; 
+
+    chunks.forEach((chunk, index) => {
+      const isFirstPage = index === 0;
+      const pageNum = startPageNum + index;
+      let slide = pptx.addSlide();
+      
+      slide.addText("TERHAD", { x: 0.5, y: 0.45, w: wLayout, fontSize: pptSubTitleSize, bold: true, align: alignMain, fontFace: fontName });
+      slide.addText(`3.0 ANALISIS MAKMAL (Kumpulan ${data.kumpulan})`, { x: 0.5, y: 0.7, w: wLayout, fontSize: pptTitleSize, bold: true, align: alignMain, fontFace: fontName });
+      slide.addText("FASA PEMBENTANGAN", { x: 5.77, y: 0.45, w: 2.0, fontSize: 9, color: 'FFFFFF', fill: '4CAF50', align: 'center', fontFace: 'Arial' });
+
+      // Dynamic Y-Offset tracker
+      let yOffset = 1.3;
+
+      // Table formatting global options
+      const tblOpts = { x: 0.5, w: wLayout, border: { pt:1 }, fontSize: pptTableSize, fontFace: fontName };
+
+      // --- 1. KETERANGAN TABLE ---
+      slide.addTable([
+        [
+          { text: "CAN WE NO :", options: { fill: '0070C0', color: 'FFFFFF', align: alignTable } },
+          { text: data.can_we_no || "", options: { align: 'center' } },
+          { text: "KETERANGAN :", options: { fill: '0070C0', color: 'FFFFFF', align: alignTable } },
+          { text: data.keterangan || "" }
+        ]
+      ], { ...tblOpts, y: yOffset, colW: [1.3, 0.7, 1.5, 3.77] });
+      
+      const charsPerLineInfo = Math.max(20, 65 - (sizeDiff * 4)); 
+      let infoLines = Math.max(1, Math.ceil((data.keterangan || "").length / charsPerLineInfo));
+      let lineSpacing = 0.2 + (sizeDiff * 0.015);
+      yOffset += 0.4 + (infoLines * lineSpacing); 
+
+      if (isFirstPage) {
+        // --- 2. SKOP TABLE ---
+        slide.addTable([
+          [{ text: "CADANGAN SKOP SEBELUM MAKMAL", options: { bold:true, align:alignTable } }, { text: "SKOP SELEPAS MAKMAL", options: { bold:true, align:alignTable } }],
+          [{ text: data.skop_sebelum || "" }, { text: data.skop_selepas || "" }]
+        ], { ...tblOpts, y: yOffset });
+        
+        const charsPerLineSkop = Math.max(20, 55 - (sizeDiff * 3));
+        let skopSebelumLines = (data.skop_sebelum || "").split('\n').map(l => Math.ceil(l.length / charsPerLineSkop)).reduce((a,b)=>a+b, 0);
+        let skopSelepasLines = (data.skop_selepas || "").split('\n').map(l => Math.ceil(l.length / charsPerLineSkop)).reduce((a,b)=>a+b, 0);
+        let skopLines = Math.max(skopSebelumLines, skopSelepasLines);
+        if (skopLines === 0) skopLines = 1;
+        
+        yOffset += (0.6 + (sizeDiff * 0.03)) + (skopLines * lineSpacing);
+
+        // --- 3. KOS TABLE ---
+        slide.addTable([
+          [{ text: "KOS SEBELUM MAKMAL (RM)", options: { align:alignTable, bold:true } }, { text: "KOS SELEPAS MAKMAL (RM)", options: { align:alignTable, bold:true } }, { text: "BEZA (RM)", options: { align:alignTable, bold:true } }],
+          [{ text: formatMoney(kosSebelum), options: { align: 'center' } }, { text: formatMoney(kosSelepas), options: { align: 'center' } }, { text: formatMoney(beza), options: { align: 'center' } }]
+        ], { ...tblOpts, y: yOffset });
+        
+        yOffset += 0.9 + (sizeDiff * 0.05); 
+      }
+
+      // --- 4. ULASAN TEXT ---
+      if (chunk.length > 0) {
+          slide.addText(isFirstPage ? 'ULASAN' : 'ULASAN (SAMBUNGAN)', { x: 0.5, y: yOffset, w: wLayout, fontSize: pptUlasanSize, bold: true, underline: true, align: alignMain, fontFace: fontName });
+          yOffset += 0.4 + (sizeDiff * 0.02);
+          
+          let remainingHeight = 10.5 - yOffset;
+          if (remainingHeight < 1.0) remainingHeight = 1.0; 
+
+          // STRICT FONT ENFORCEMENT: Convert chunk to an array of styled objects
+          let ulasanFormattedArray = [];
+          chunk.forEach((item, i) => {
+              const letter = String.fromCharCode(96 + globalLetterIndex); 
+              globalLetterIndex++;
+              
+              ulasanFormattedArray.push({
+                  text: `${letter}) ${item}`,
+                  options: { fontFace: fontName, fontSize: pptUlasanSize }
+              });
+              
+              if (i < chunk.length - 1) {
+                  ulasanFormattedArray.push({
+                      text: "\n\n",
+                      options: { fontFace: fontName, fontSize: pptUlasanSize }
+                  });
+              }
+          });
+
+          slide.addText(ulasanFormattedArray, { x: 0.5, y: yOffset, w: wLayout, h: remainingHeight, align: 'left', valign: 'top' });
+      }
+
+      // Footer
+      slide.addShape(pptx.ShapeType.line, { x: 0.5, y: 11.0, w: wLayout, h: 0, line: { color: '000000', width: 1 } });
+      slide.addText(`TERHAD ${pageNum}`, { x: 5.77, y: 11.1, w: 2.0, fontSize: 12, bold: true, align: 'right', fontFace: 'Arial' });
+    });
+
+    pptx.writeFile({ fileName: `Analisis_Makmal_Kumpulan_${data.kumpulan || 'X'}.pptx` });
+  }
+
+  form.addEventListener("input", updatePreview);
+  updatePreview();
+</script>
+
+</body>
+</html>
