@@ -26,6 +26,21 @@
     .control-group label { margin-top: 0; font-size: 0.85rem; }
     input, textarea, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
     
+    /* Rich Text Toolbar Styles */
+    .toolbar { display: flex; gap: 5px; background: #eee; padding: 5px; border: 1px solid #ccc; border-bottom: none; border-radius: 4px 4px 0 0; margin-top: 5px; }
+    .toolbar button { background: white; border: 1px solid #ccc; padding: 5px 10px; cursor: pointer; border-radius: 3px; font-family: serif; font-size: 1.1rem; }
+    .toolbar button:hover { background: #e0e0e0; }
+    
+    /* ContentEditable Div pretending to be a Textarea */
+    .rich-editor { 
+        width: 100%; height: 200px; padding: 8px; border: 1px solid #ccc; border-radius: 0 0 4px 4px; 
+        box-sizing: border-box; font-family: inherit; overflow-y: auto; background: white; outline: none;
+    }
+    .rich-editor:focus { border-color: #999; }
+    .rich-editor:empty:before { content: attr(placeholder); color: #999; pointer-events: none; display: block; }
+    
+    .helper-text { font-size: 0.75rem; color: #666; margin-top: 5px; font-weight: normal; line-height: 1.4;}
+
     .button-group { display: flex; gap: 10px; margin-top: 25px; margin-bottom: 20px; }
     .print-btn, .ppt-btn { flex: 1; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
     .print-btn:hover, .ppt-btn:hover { opacity: 0.9; }
@@ -47,7 +62,6 @@
     }
 
     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
-    /* Headers scale slightly relative to the base size */
     .header .left div { font-size: calc(var(--base-size) + 1pt); }
     .fase { background: var(--fase-green); color: white; font-size: 9pt; font-weight: bold; padding: 4px 10px; border-radius: 4px; font-family: Arial, sans-serif; }
     
@@ -58,7 +72,6 @@
     .align-center { text-align: center !important; }
     .align-right { text-align: right !important; }
 
-    /* --- INFO TABLE COLUMN WIDTHS --- */
     .info-table th { background-color: var(--primary-blue); color: white; }
     .info-table th:nth-child(1) { width: 18%; } 
     .info-table td:nth-child(2) { width: 10%; } 
@@ -68,23 +81,19 @@
     .ulasan-wrapper { display: block; width: 100%; }
     .ulasan-heading { font-weight: bold; text-decoration: underline; margin-top: 10px; margin-bottom: 10px; font-size: var(--base-size); }
     
-    .ulasan-list { padding-left: 25px; margin: 0; }
-    .ulasan-list li { margin-bottom: 8px; text-align: justify; font-size: var(--base-size); line-height: 1.4; }
-    
+    /* Structured List Styles */
+    .ulasan-item { margin-bottom: 8px; text-align: justify; font-size: var(--base-size); line-height: 1.4; display: flex; }
+    .ulasan-label { min-width: 25px; flex-shrink: 0; font-weight: normal; }
+    .ulasan-content { flex: 1; }
+    .ulasan-sub { margin-left: 25px; } 
+
     .footer-line { border: 0; border-top: 1px solid #000; position: absolute; bottom: 35px; left: 20mm; right: 20mm; }
     .footer { position: absolute; bottom: 15px; right: 20mm; font-size: 14pt; font-weight: bold; font-family: Arial, sans-serif;}
 
-    /* --- PRINT SETTINGS --- */
     @media print { 
         @page { size: A4; margin: 0; } 
         #formContainer { display: none; } 
-        body { 
-            background: none; 
-            display: block; 
-            /* Forces browsers to print background colors and white text! */
-            -webkit-print-color-adjust: exact; 
-            print-color-adjust: exact;
-        }
+        body { background: none; display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         #previewContainer { padding: 0; height: auto; overflow: visible; display: block; }
         .a4page { margin: 0; box-shadow: none; border: none; page-break-after: always; } 
     }
@@ -99,7 +108,7 @@
     <span class="control-label">TETAPAN HALAMAN (PAGE SETTINGS)</span>
     <div style="margin-bottom: 15px;">
       <label>Muka Surat Mula (Start Page):</label>
-      <input type="number" id="start_page" value="1" min="1" oninput="updatePreview()">
+      <input type="number" id="start_page" value="1" min="1" oninput="debouncedUpdatePreview()" style="width: 100px;">
     </div>
 
     <span class="control-label" style="margin-top: 20px;">TETAPAN TULISAN (FONT SETTINGS)</span>
@@ -127,33 +136,44 @@
 
   <form id="reportForm">
     <label>Kumpulan:</label>
-    <input type="text" name="kumpulan" value="2">
+    <input type="text" name="kumpulan" value="2" oninput="debouncedUpdatePreview()">
     
     <label>CAN WE NO:</label>
-    <input type="text" name="can_we_no" value="1">
+    <input type="text" name="can_we_no" value="1" oninput="debouncedUpdatePreview()">
     
     <label>KETERANGAN:</label>
-    <textarea name="keterangan" rows="2">Rumusan Kerja Arkitek</textarea>
+    <textarea name="keterangan" rows="2" oninput="debouncedUpdatePreview()">Rumusan Kerja Arkitek</textarea>
 
     <label>SKOP SEBELUM MAKMAL:</label>
-    <textarea name="skop_sebelum" rows="3"></textarea>
+    <textarea name="skop_sebelum" rows="3" oninput="debouncedUpdatePreview()"></textarea>
 
     <label>SKOP SELEPAS MAKMAL:</label>
-    <textarea name="skop_selepas" rows="3"></textarea>
+    <textarea name="skop_selepas" rows="3" oninput="debouncedUpdatePreview()"></textarea>
 
     <div style="display: flex; gap: 10px;">
       <div style="flex:1">
         <label>KOS SEBELUM (RM):</label>
-        <input type="number" step="0.01" name="kos_sebelum" value="100000">
+        <input type="number" step="0.01" name="kos_sebelum" value="100000" oninput="debouncedUpdatePreview()">
       </div>
       <div style="flex:1">
         <label>KOS SELEPAS (RM):</label>
-        <input type="number" step="0.01" name="kos_selepas" value="40000">
+        <input type="number" step="0.01" name="kos_selepas" value="40000" oninput="debouncedUpdatePreview()">
       </div>
     </div>
 
-    <label>ULASAN (Tekan 'Enter' untuk setiap poin baru):</label>
-    <textarea name="ulasan" style="height: 200px;" placeholder="Poin pertama...&#10;Poin kedua..."></textarea>
+    <label>ULASAN EDITOR:</label>
+    <div class="helper-text">
+        Tip: Mula baris dengan sengkang ( <b>-</b> ) untuk buat Sub-Poin (a, b, c).<br>
+        <i>*Jika 'paste' teks dari PDF, cantumkan baris yang terputus (backspace).</i>
+    </div>
+    
+    <div class="toolbar">
+      <button type="button" onclick="formatText('bold')" style="font-weight: bold;" title="Bold">B</button>
+      <button type="button" onclick="formatText('italic')" style="font-style: italic;" title="Italic">I</button>
+      <button type="button" onclick="formatText('underline')" style="text-decoration: underline;" title="Underline">U</button>
+    </div>
+    
+    <div id="ulasanBox" class="rich-editor" contenteditable="true" oninput="debouncedUpdatePreview()" placeholder="Poin Utama pertama...&#10;- Sub poin (a)&#10;- Sub poin (b)&#10;Poin Utama kedua..."></div>
 
     <div class="button-group">
       <button type="button" class="print-btn" onclick="window.print()">PRINT PDF</button>
@@ -169,22 +189,67 @@
 <script>
   const form = document.getElementById("reportForm");
   window.autoPPTChunks = [];
-  
-  // Global Font Size Tracker
   let currentFontSize = 11;
+  let previewTimeout; // Timer for the debouncer
+
+  // --- PERFORMANCE FIX: Debouncer ---
+  // Waits 300ms after you stop typing before redrawing the heavy PDF
+  function debouncedUpdatePreview() {
+      clearTimeout(previewTimeout);
+      previewTimeout = setTimeout(updatePreview, 300);
+  }
+
+  // Intercept Paste to prevent messy HTML (like invisible tags from MS Word/Web)
+  document.getElementById('ulasanBox').addEventListener('paste', function(e) {
+      e.preventDefault();
+      let text = (e.originalEvent || e).clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+  });
+
+  function formatText(command) {
+      document.execCommand(command, false, null);
+      document.getElementById('ulasanBox').focus();
+      updatePreview(); // Instant update when clicking buttons
+  }
 
   function changeFontSize(step) {
       currentFontSize += step;
       if (currentFontSize < 8) currentFontSize = 8;
-      if (currentFontSize > 18) currentFontSize = 18; // Prevent it from getting too absurdly large
+      if (currentFontSize > 18) currentFontSize = 18; 
       document.getElementById('font_size_display').innerText = currentFontSize;
-      updatePreview();
+      updatePreview(); // Instant update when clicking buttons
   }
 
   function formatMoney(num) {
     if (isNaN(num)) return "0.00";
     const formatted = new Intl.NumberFormat('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(num));
     return num < 0 ? `(${formatted})` : formatted;
+  }
+
+  // --- Extracts Lines from the ContentEditable Div ---
+  function getUlasanLines() {
+      const editor = document.getElementById('ulasanBox');
+      let html = editor.innerHTML;
+
+      html = html.replace(/<li[^>]*>/gi, '\n- ');
+      html = html.replace(/<\/li>/gi, '');
+      html = html.replace(/<ul[^>]*>/gi, '');
+      html = html.replace(/<\/ul>/gi, '');
+      html = html.replace(/<ol[^>]*>/gi, '');
+      html = html.replace(/<\/ol>/gi, '');
+
+      html = html.replace(/<div[^>]*>/gi, '\n');
+      html = html.replace(/<\/div>/gi, '');
+      html = html.replace(/<p[^>]*>/gi, '\n');
+      html = html.replace(/<\/p>/gi, '');
+      html = html.replace(/<br[^>]*>/gi, '\n');
+
+      let lines = html.split('\n');
+
+      return lines.map(line => line.trim()).filter(line => {
+          let textOnly = line.replace(/<[^>]+>/g, '').trim();
+          return textOnly !== "" && textOnly !== "&nbsp;" && textOnly !== "-";
+      });
   }
 
   function createPageElement(data, pageNum, isFirstPage) {
@@ -256,7 +321,6 @@
   }
 
   function updatePreview() {
-    // 1. Apply typography settings globally BEFORE drawing the page
     const fontSelect = document.getElementById('font_family').value;
     document.documentElement.style.setProperty('--main-font', fontSelect);
     document.documentElement.style.setProperty('--base-size', currentFontSize + 'pt');
@@ -270,7 +334,7 @@
     previewContent.innerHTML = ""; 
     window.autoPPTChunks = [];
 
-    const ulasanItems = data.ulasan.split("\n").filter(line => line.trim() !== "");
+    const ulasanLines = getUlasanLines();
     
     let pageNum = startPageNum;
     let currentPage = createPageElement(data, pageNum, true);
@@ -281,17 +345,9 @@
     ulasanHeading.className = `ulasan-heading ${alignMain}`;
     ulasanHeading.textContent = 'ULASAN';
     ulasanWrapper.appendChild(ulasanHeading);
-    
-    let currentOl = document.createElement('ol');
-    currentOl.className = 'ulasan-list';
-    let currentChunk = [];
-    let currentLetterIndex = 1;
-    currentOl.setAttribute('start', currentLetterIndex);
-    currentOl.setAttribute('type', 'a');
-    ulasanWrapper.appendChild(currentOl);
 
-    if (ulasanItems.length === 0) {
-      currentOl.outerHTML = `<p style="color:#999; font-style:italic; font-size: 0.9rem;">(Sila masukkan ulasan di ruangan sebelah kiri)</p>`;
+    if (ulasanLines.length === 0) {
+      ulasanWrapper.innerHTML += `<p style="color:#999; font-style:italic; font-size: 0.9rem;">(Sila masukkan ulasan di ruangan editor)</p>`;
       window.autoPPTChunks.push([]);
       return;
     }
@@ -299,17 +355,56 @@
     const pageHeightPixels = currentPage.offsetHeight; 
     const maxBottomLimit = pageHeightPixels - 120;
 
-    for (let i = 0; i < ulasanItems.length; i++) {
-      let cleanText = ulasanItems[i].replace(/^[a-zA-Z0-9]+[\.\)]\s+/, '');
-      let li = document.createElement('li');
-      li.textContent = cleanText;
-      currentOl.appendChild(li);
+    let currentChunk = [];
+    let mainCounter = 0;
+    let subCounter = 0;
 
-      let bottomOfLi = li.offsetTop + li.offsetHeight;
+    for (let i = 0; i < ulasanLines.length; i++) {
+      let htmlLine = ulasanLines[i];
+      let rawText = htmlLine.replace(/<[^>]+>/g, '').trim();
+      let isSubPoint = rawText.startsWith('-');
+      
+      let cleanHTML = htmlLine;
+      
+      // --- CRASH FIX: Safe O(N) Dash Remover (No Regex ReDoS) ---
+      if (isSubPoint) {
+          let inTag = false;
+          for(let j = 0; j < cleanHTML.length; j++) {
+              if (cleanHTML[j] === '<') inTag = true;
+              if (cleanHTML[j] === '>') inTag = false;
+              if (!inTag && cleanHTML[j] === '-') {
+                  cleanHTML = cleanHTML.substring(0, j) + cleanHTML.substring(j+1).trimStart();
+                  break; // Only remove the very first dash
+              }
+          }
+      }
+      
+      let labelStr = "";
+      let itemType = "";
 
-      // Because font-size changes dynamically via CSS variables, this measurement perfectly catches if larger text causes overflow!
-      if (bottomOfLi > maxBottomLimit) {
-        currentOl.removeChild(li); 
+      if (isSubPoint) {
+          subCounter++;
+          labelStr = String.fromCharCode(96 + subCounter) + ")"; 
+          itemType = "sub";
+      } else {
+          mainCounter++;
+          subCounter = 0; 
+          labelStr = mainCounter + ".0"; 
+          itemType = "main";
+      }
+
+      let div = document.createElement('div');
+      div.className = `ulasan-item ${itemType === 'sub' ? 'ulasan-sub' : ''}`;
+      div.innerHTML = `
+          <div class="ulasan-label">${labelStr}</div>
+          <div class="ulasan-content">${cleanHTML}</div>
+      `;
+      ulasanWrapper.appendChild(div);
+
+      let bottomOfDiv = div.offsetTop + div.offsetHeight;
+
+      if (bottomOfDiv > maxBottomLimit) {
+        ulasanWrapper.removeChild(div); 
 
         if (currentChunk.length === 0) {
             ulasanHeading.style.display = 'none'; 
@@ -330,17 +425,14 @@
         ulasanHeading.textContent = 'ULASAN (SAMBUNGAN)';
         ulasanWrapper.appendChild(ulasanHeading);
         
-        currentOl = document.createElement('ol');
-        currentOl.className = 'ulasan-list';
-        currentOl.setAttribute('start', currentLetterIndex);
-        currentOl.setAttribute('type', 'a');
-        ulasanWrapper.appendChild(currentOl);
-        
-        currentOl.appendChild(li);
+        ulasanWrapper.appendChild(div);
       }
       
-      currentChunk.push(cleanText);
-      currentLetterIndex++;
+      currentChunk.push({
+          type: itemType,
+          label: labelStr,
+          html: cleanHTML 
+      });
     }
     
     if (currentChunk.length > 0) {
@@ -348,9 +440,30 @@
     }
   }
 
+  function convertHTMLtoPPTX(htmlString, baseOpts) {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlString;
+      const runs = [];
+
+      function traverse(node, currentOpts) {
+          if (node.nodeType === Node.TEXT_NODE) {
+              if (node.textContent && node.textContent !== "") {
+                  runs.push({ text: node.textContent, options: { ...currentOpts } });
+              }
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+              const newOpts = { ...currentOpts };
+              if (node.tagName === 'B' || node.tagName === 'STRONG') newOpts.bold = true;
+              if (node.tagName === 'I' || node.tagName === 'EM') newOpts.italic = true;
+              if (node.tagName === 'U') newOpts.underline = true;
+              node.childNodes.forEach(child => traverse(child, newOpts));
+          }
+      }
+      traverse(tempDiv, baseOpts);
+      return runs.length > 0 ? runs : [{text: htmlString, options: baseOpts}];
+  }
+
   function exportToPPT() {
     let pptx = new PptxGenJS();
-    
     pptx.defineLayout({ name: 'A4_PORTRAIT', width: 8.27, height: 11.69 });
     pptx.layout = 'A4_PORTRAIT';
 
@@ -359,12 +472,10 @@
     const alignMain = 'left';
     const startPageNum = parseInt(document.getElementById('start_page').value) || 1;
 
-    // --- Font Extraction & Sizing Math for PPT ---
     const fontRaw = document.getElementById('font_family').value;
     const fontName = fontRaw.split(',')[0].replace(/['"]/g, '').trim();
     const sizeDiff = currentFontSize - 11; 
     
-    // Scale standard sizes
     const pptTitleSize = 14 + sizeDiff;
     const pptSubTitleSize = 12 + sizeDiff;
     const pptTableSize = 10 + sizeDiff;
@@ -375,7 +486,6 @@
     const beza = kosSelepas - kosSebelum;
 
     const chunks = window.autoPPTChunks && window.autoPPTChunks.length > 0 ? window.autoPPTChunks : [[]];
-    let globalLetterIndex = 1;
     const wLayout = 7.27; 
 
     chunks.forEach((chunk, index) => {
@@ -387,13 +497,9 @@
       slide.addText(`3.0 ANALISIS MAKMAL (Kumpulan ${data.kumpulan})`, { x: 0.5, y: 0.7, w: wLayout, fontSize: pptTitleSize, bold: true, align: alignMain, fontFace: fontName });
       slide.addText("FASA PEMBENTANGAN", { x: 5.77, y: 0.45, w: 2.0, fontSize: 9, color: 'FFFFFF', fill: '4CAF50', align: 'center', fontFace: 'Arial' });
 
-      // Dynamic Y-Offset tracker
       let yOffset = 1.3;
-
-      // Table formatting global options
       const tblOpts = { x: 0.5, w: wLayout, border: { pt:1 }, fontSize: pptTableSize, fontFace: fontName };
 
-      // --- 1. KETERANGAN TABLE ---
       slide.addTable([
         [
           { text: "CAN WE NO :", options: { fill: '0070C0', color: 'FFFFFF', align: alignTable } },
@@ -409,7 +515,6 @@
       yOffset += 0.4 + (infoLines * lineSpacing); 
 
       if (isFirstPage) {
-        // --- 2. SKOP TABLE ---
         slide.addTable([
           [{ text: "CADANGAN SKOP SEBELUM MAKMAL", options: { bold:true, align:alignTable } }, { text: "SKOP SELEPAS MAKMAL", options: { bold:true, align:alignTable } }],
           [{ text: data.skop_sebelum || "" }, { text: data.skop_selepas || "" }]
@@ -423,7 +528,6 @@
         
         yOffset += (0.6 + (sizeDiff * 0.03)) + (skopLines * lineSpacing);
 
-        // --- 3. KOS TABLE ---
         slide.addTable([
           [{ text: "KOS SEBELUM MAKMAL (RM)", options: { align:alignTable, bold:true } }, { text: "KOS SELEPAS MAKMAL (RM)", options: { align:alignTable, bold:true } }, { text: "BEZA (RM)", options: { align:alignTable, bold:true } }],
           [{ text: formatMoney(kosSebelum), options: { align: 'center' } }, { text: formatMoney(kosSelepas), options: { align: 'center' } }, { text: formatMoney(beza), options: { align: 'center' } }]
@@ -432,7 +536,6 @@
         yOffset += 0.9 + (sizeDiff * 0.05); 
       }
 
-      // --- 4. ULASAN TEXT ---
       if (chunk.length > 0) {
           slide.addText(isFirstPage ? 'ULASAN' : 'ULASAN (SAMBUNGAN)', { x: 0.5, y: yOffset, w: wLayout, fontSize: pptUlasanSize, bold: true, underline: true, align: alignMain, fontFace: fontName });
           yOffset += 0.4 + (sizeDiff * 0.02);
@@ -440,29 +543,26 @@
           let remainingHeight = 10.5 - yOffset;
           if (remainingHeight < 1.0) remainingHeight = 1.0; 
 
-          // STRICT FONT ENFORCEMENT: Convert chunk to an array of styled objects
-          let ulasanFormattedArray = [];
+          let pptxFormattedRuns = [];
+          
           chunk.forEach((item, i) => {
-              const letter = String.fromCharCode(96 + globalLetterIndex); 
-              globalLetterIndex++;
-              
-              ulasanFormattedArray.push({
-                  text: `${letter}) ${item}`,
-                  options: { fontFace: fontName, fontSize: pptUlasanSize }
+              let prefixSpacing = item.type === 'sub' ? "     " : "";
+              pptxFormattedRuns.push({
+                  text: prefixSpacing + item.label + " ",
+                  options: { fontFace: fontName, fontSize: pptUlasanSize, bold: false }
               });
               
+              let parsedRuns = convertHTMLtoPPTX(item.html, { fontFace: fontName, fontSize: pptUlasanSize });
+              pptxFormattedRuns.push(...parsedRuns);
+              
               if (i < chunk.length - 1) {
-                  ulasanFormattedArray.push({
-                      text: "\n\n",
-                      options: { fontFace: fontName, fontSize: pptUlasanSize }
-                  });
+                  pptxFormattedRuns.push({ text: "\n\n", options: { fontFace: fontName, fontSize: pptUlasanSize } });
               }
           });
 
-          slide.addText(ulasanFormattedArray, { x: 0.5, y: yOffset, w: wLayout, h: remainingHeight, align: 'left', valign: 'top' });
+          slide.addText(pptxFormattedRuns, { x: 0.5, y: yOffset, w: wLayout, h: remainingHeight, align: 'left', valign: 'top' });
       }
 
-      // Footer
       slide.addShape(pptx.ShapeType.line, { x: 0.5, y: 11.0, w: wLayout, h: 0, line: { color: '000000', width: 1 } });
       slide.addText(`TERHAD ${pageNum}`, { x: 5.77, y: 11.1, w: 2.0, fontSize: 12, bold: true, align: 'right', fontFace: 'Arial' });
     });
@@ -470,8 +570,8 @@
     pptx.writeFile({ fileName: `Analisis_Makmal_Kumpulan_${data.kumpulan || 'X'}.pptx` });
   }
 
-  form.addEventListener("input", updatePreview);
-  updatePreview();
+  // Initial render (Delay slightly so fonts load)
+  setTimeout(updatePreview, 100);
 </script>
 
 </body>
