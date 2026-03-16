@@ -8,7 +8,6 @@
     :root {
       --primary-blue: #0070C0;
       --fase-green: #4CAF50;
-      /* Dynamic Font Variables */
       --main-font: Arial, sans-serif;
       --base-size: 11pt;
     }
@@ -18,7 +17,7 @@
     #formContainer { flex: 1; padding: 25px; background: #fff; box-shadow: 2px 0 5px rgba(0,0,0,0.1); height: 100vh; overflow-y: auto; position: sticky; top: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
     #previewContainer { flex: 1.5; padding: 40px; display: flex; flex-direction: column; align-items: center; overflow-y: auto; height: 100vh; box-sizing: border-box; }
     
-    h2 { color: var(--primary-blue); border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px; margin-top: 0; }
+    h2 { color: var(--primary-blue); border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px; margin-top: 0; display: flex; justify-content: space-between; align-items: center;}
     .control-group { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #ddd; }
     .control-label { font-size: 0.8rem; font-weight: bold; color: #555; margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     
@@ -41,11 +40,15 @@
     
     .helper-text { font-size: 0.75rem; color: #666; margin-top: 5px; font-weight: normal; line-height: 1.4;}
 
-    .button-group { display: flex; gap: 10px; margin-top: 25px; margin-bottom: 20px; }
-    .print-btn, .ppt-btn { flex: 1; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-    .print-btn:hover, .ppt-btn:hover { opacity: 0.9; }
+    /* Button Groups */
+    .button-group { display: flex; gap: 10px; margin-top: 15px; }
+    .print-btn, .ppt-btn, .save-btn, .load-btn { flex: 1; color: white; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; font-size: 0.9rem; }
+    .print-btn:hover, .ppt-btn:hover, .save-btn:hover, .load-btn:hover { opacity: 0.9; }
+    
     .print-btn { background: var(--primary-blue); }
     .ppt-btn { background: #d04423; }
+    .save-btn { background: #2e7d32; } /* Dark Green */
+    .load-btn { background: #555; } /* Grey */
 
     /* --- REBUILT A4 PAGE ENGINE --- */
     .a4page { 
@@ -102,8 +105,14 @@
 <body>
 
 <div id="formContainer">
-  <h2>Analisis Makmal Settings</h2>
+  <h2>Analisa Makmal Report Settings</h2>
   
+  <div class="button-group" style="margin-top: 0; margin-bottom: 25px;">
+    <button type="button" class="save-btn" onclick="saveProject()">💾 SAVE PROJECT</button>
+    <button type="button" class="load-btn" onclick="document.getElementById('fileInput').click()">📂 LOAD PROJECT</button>
+    <input type="file" id="fileInput" style="display:none" accept=".json" onchange="loadProject(event)">
+  </div>
+
   <div class="control-group">
     <span class="control-label">TETAPAN HALAMAN (PAGE SETTINGS)</span>
     <div style="margin-bottom: 15px;">
@@ -175,7 +184,7 @@
     
     <div id="ulasanBox" class="rich-editor" contenteditable="true" oninput="debouncedUpdatePreview()" placeholder="Poin Utama pertama...&#10;- Sub poin (a)&#10;- Sub poin (b)&#10;Poin Utama kedua..."></div>
 
-    <div class="button-group">
+    <div class="button-group" style="margin-top: 30px;">
       <button type="button" class="print-btn" onclick="window.print()">PRINT PDF</button>
       <button type="button" class="ppt-btn" onclick="exportToPPT()">EXPORT PPT</button>
     </div>
@@ -190,16 +199,88 @@
   const form = document.getElementById("reportForm");
   window.autoPPTChunks = [];
   let currentFontSize = 11;
-  let previewTimeout; // Timer for the debouncer
+  let previewTimeout; 
+
+  // --- SAVE & LOAD PROJECT ENGINE ---
+  function saveProject() {
+      // Gather Form Data
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      // Bundle everything into a JSON object
+      const projectData = {
+          formData: data,
+          ulasanHTML: document.getElementById('ulasanBox').innerHTML,
+          settings: {
+              startPage: document.getElementById('start_page').value,
+              fontFamily: document.getElementById('font_family').value,
+              fontSize: currentFontSize
+          }
+      };
+
+      // Convert to string and trigger download
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `Analisis_Makmal_Kumpulan_${data.kumpulan || 'X'}.json`);
+      document.body.appendChild(downloadAnchorNode); 
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  }
+
+  function loadProject(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          try {
+              const projectData = JSON.parse(e.target.result);
+
+              // Restore Form Inputs
+              if (projectData.formData) {
+                  for (const key in projectData.formData) {
+                      if (form.elements[key]) {
+                          form.elements[key].value = projectData.formData[key];
+                      }
+                  }
+              }
+
+              // Restore Rich Text
+              if (projectData.ulasanHTML !== undefined) {
+                  document.getElementById('ulasanBox').innerHTML = projectData.ulasanHTML;
+              }
+
+              // Restore Settings
+              if (projectData.settings) {
+                  if (projectData.settings.startPage) document.getElementById('start_page').value = projectData.settings.startPage;
+                  if (projectData.settings.fontFamily) document.getElementById('font_family').value = projectData.settings.fontFamily;
+                  if (projectData.settings.fontSize) {
+                      currentFontSize = projectData.settings.fontSize;
+                      document.getElementById('font_size_display').innerText = currentFontSize;
+                  }
+              }
+
+              updatePreview(); // Re-render the A4 pages immediately
+              
+              // Reset file input so you can load the same file again if needed
+              document.getElementById('fileInput').value = "";
+              
+              alert("Projek berjaya dimuat naik! (Project Loaded)");
+          } catch (error) {
+              alert("Ralat membaca fail (Error reading file): " + error.message);
+          }
+      };
+      reader.readAsText(file);
+  }
 
   // --- PERFORMANCE FIX: Debouncer ---
-  // Waits 300ms after you stop typing before redrawing the heavy PDF
   function debouncedUpdatePreview() {
       clearTimeout(previewTimeout);
       previewTimeout = setTimeout(updatePreview, 300);
   }
 
-  // Intercept Paste to prevent messy HTML (like invisible tags from MS Word/Web)
+  // Intercept Paste to prevent messy HTML
   document.getElementById('ulasanBox').addEventListener('paste', function(e) {
       e.preventDefault();
       let text = (e.originalEvent || e).clipboardData.getData('text/plain');
@@ -209,7 +290,7 @@
   function formatText(command) {
       document.execCommand(command, false, null);
       document.getElementById('ulasanBox').focus();
-      updatePreview(); // Instant update when clicking buttons
+      updatePreview(); 
   }
 
   function changeFontSize(step) {
@@ -217,7 +298,7 @@
       if (currentFontSize < 8) currentFontSize = 8;
       if (currentFontSize > 18) currentFontSize = 18; 
       document.getElementById('font_size_display').innerText = currentFontSize;
-      updatePreview(); // Instant update when clicking buttons
+      updatePreview(); 
   }
 
   function formatMoney(num) {
@@ -226,7 +307,6 @@
     return num < 0 ? `(${formatted})` : formatted;
   }
 
-  // --- Extracts Lines from the ContentEditable Div ---
   function getUlasanLines() {
       const editor = document.getElementById('ulasanBox');
       let html = editor.innerHTML;
@@ -365,8 +445,6 @@
       let isSubPoint = rawText.startsWith('-');
       
       let cleanHTML = htmlLine;
-      
-      // --- CRASH FIX: Safe O(N) Dash Remover (No Regex ReDoS) ---
       if (isSubPoint) {
           let inTag = false;
           for(let j = 0; j < cleanHTML.length; j++) {
@@ -374,7 +452,7 @@
               if (cleanHTML[j] === '>') inTag = false;
               if (!inTag && cleanHTML[j] === '-') {
                   cleanHTML = cleanHTML.substring(0, j) + cleanHTML.substring(j+1).trimStart();
-                  break; // Only remove the very first dash
+                  break;
               }
           }
       }
